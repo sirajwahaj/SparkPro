@@ -1,0 +1,87 @@
+services:
+  spark-master:
+    image: bitnami/spark:3.4.1
+    container_name: spark-master
+    environment:
+      HOME: "/root"
+      JAVA_TOOL_OPTIONS: "-Duser.home=/root"
+      SPARK_MODE: "master"
+      SPARK_MASTER_HOST: "spark-master"
+    ports:
+      - "7077:7077"    # spark master (native)
+      - "8080:8080"    # master web UI
+    networks:
+      - spark-net
+    volumes:
+      - spark-master-logs:/opt/bitnami/spark/logs
+      - ./app:/opt/app
+      - ./parts/part_node1.csv:/data/part.csv:ro
+      - ./shared:/shared
+
+  spark-worker-1:
+    image: bitnami/spark:3.4.1
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    environment:
+      HOME: "/root"
+      JAVA_TOOL_OPTIONS: "-Duser.home=/root"
+      SPARK_MODE: "worker"
+      SPARK_MASTER_URL: "spark://spark-master:7077"
+      SPARK_WORKER_MEMORY: "1G"
+      SPARK_WORKER_CORES: "1"
+    ports:
+      - "8081:8081"    # worker web UI (first worker binds here on host)
+    networks:
+      - spark-net
+    volumes:
+      - spark-worker-logs:/opt/bitnami/spark/logs
+      - ./app:/opt/app
+      - ./parts/part_node2.csv:/data/part.csv:ro
+      - ./shared:/shared
+
+  spark-worker-2:
+    image: bitnami/spark:3.4.1
+    container_name: spark-worker-2
+    depends_on:
+      - spark-master
+    environment:
+      HOME: "/root"
+      JAVA_TOOL_OPTIONS: "-Duser.home=/root"
+      SPARK_MODE: "worker"
+      SPARK_MASTER_URL: "spark://spark-master:7077"
+      SPARK_WORKER_MEMORY: "1G"
+      SPARK_WORKER_CORES: "1"
+    ports:
+      - "8082:8081"    # worker web UI (first worker binds here on host)
+    networks:
+      - spark-net
+    volumes:
+      - spark-worker-logs:/opt/bitnami/spark/logs
+      - ./app:/opt/app
+      - ./parts/part_node3.csv:/data/part.csv:ro
+      - ./shared:/shared
+
+  # optional client container (useful to run spark-submit from inside same network)
+  spark-client:
+    image: bitnami/spark:3.4.1
+    container_name: spark-client
+    depends_on:
+      - spark-master
+    entrypoint: [ "sleep", "infinity" ]
+    environment:
+      HOME: "/root"
+      JAVA_TOOL_OPTIONS: "-Duser.home=/root"
+    volumes:
+      - ./app:/opt/app
+      - ./shared:/shared
+    networks:
+      - spark-net
+
+volumes:
+  spark-master-logs:
+  spark-worker-logs:
+
+networks:
+  spark-net:
+    driver: bridge
