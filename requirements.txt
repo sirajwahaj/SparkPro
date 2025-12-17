@@ -1,12 +1,13 @@
-pyspark==4.0.0
+#pyspark==4.0.0
 # Spark SQL
-pyspark[sql]
+#pyspark[sql]
 # pandas API on Spark
-pyspark[pandas_on_spark]
-plotly  # to plot your data, you can install plotly together.
+#pyspark[pandas_on_spark]
+#plotly  # to plot your data, you can install plotly together.
 # Spark Connect
-pyspark[connect]
-pyspark-client
+#pyspark[connect]
+#pyspark-client
 pandas
 numpy
 matplotlib
+pyarrow

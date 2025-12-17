@@ -1,0 +1,52 @@
+# Custom Spark Docker Image with Additional Tools
+# Based on Apache Spark 3.4.1 with added utilities
+FROM apache/spark:3.4.1-scala2.12-java11-python3-r-ubuntu
+
+# Switch to root user to install packages
+USER root
+
+# Update package list and install additional tools
+RUN apt-get update && apt-get install -y \
+    nano \
+    netcat-openbsd \
+    curl \
+    wget \
+    vim \
+    htop \
+    net-tools \
+    iputils-ping \
+    telnet \
+    tree \
+    less \
+    procps \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Fix netcat symlink (netcat-openbsd uses nc.openbsd)
+RUN rm -f /bin/nc && ln -sf /bin/nc.openbsd /bin/nc && ln -sf /bin/nc.openbsd /usr/bin/nc
+
+# Copy requirements and install Python packages during image build
+# Use HOME=/root and XDG_CACHE_HOME=/tmp to avoid pip writing into /home/spark during build
+COPY requirements.txt /app/requirements.txt
+
+RUN usermod -aG sudo spark
+RUN mkdir -p /home/spark \
+    && chown -R spark:spark /home/spark \
+    && HOME=/root XDG_CACHE_HOME=/tmp python3 -m pip install --no-cache-dir -r /app/requirements.txt
+
+# Ensure the spark user has proper permissions
+
+
+# Switch back to spark user
+USER spark
+
+# Set environment variables for Spark
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
+ENV PYSPARK_PYTHON=python3
+
+# Set working directory
+WORKDIR /opt/spark
+
+# Default command (can be overridden)
+CMD ["/opt/entrypoint.sh"]
