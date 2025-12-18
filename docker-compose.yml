@@ -1,0 +1,120 @@
+services:
+  spark-master:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-custom
+    image: spark-custom:latest
+    container_name: spark-master
+    hostname: spark-master
+    command: >
+      bash -c "
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      "
+    environment:
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_CONF_DIR=/opt/spark/conf
+    ports:
+      - "7077:7077"    # spark master (native)
+      - "8080:8080"    # master web UI
+    networks:
+      - spark-net
+    volumes:
+      - ./app:/opt/app
+      - ./parts:/opt/parts:ro
+      - ./parts/part_node1.csv:/data/part1.csv:ro
+      - ./parts/part_node2.csv:/data/part2.csv:ro
+      - ./parts/part_node3.csv:/data/part3.csv:ro
+      - ./parts/part_node_1.parquet:/data/part_1.parquet:ro
+      - ./parts/part_node_2.parquet:/data/part_2.parquet:ro
+      - ./shared:/shared
+
+  spark-worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-custom
+    image: spark-custom:latest
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    depends_on:
+      - spark-master
+    command: >
+      bash -c "
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+      "
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_CORES=4
+      - SPARK_CONF_DIR=/opt/spark/conf
+    ports:
+      - "8081:8081"    # worker web UI (first worker binds here on host)
+    networks:
+      - spark-net
+    volumes:
+      - ./app:/opt/app
+      - ./parts:/opt/parts:ro
+      - ./parts/part_node2.csv:/data/part.csv:ro
+      - ./parts/part_node_1.parquet:/data/part_1.parquet:ro
+      - ./parts/part_node_2.parquet:/data/part_2.parquet:ro
+      - ./shared:/shared
+
+  spark-worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-custom
+    image: spark-custom:latest
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    depends_on:
+      - spark-master
+    command: >
+      bash -c "
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+      "
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_CORES=4
+      - SPARK_CONF_DIR=/opt/spark/conf
+    ports:
+      - "8082:8081"    # worker web UI (second worker binds here on host)
+    networks:
+      - spark-net
+    volumes:
+      - ./app:/opt/app
+      - ./parts:/opt/parts:ro
+      - ./parts/part_node3.csv:/data/part.csv:ro
+      - ./parts/part_node_1.parquet:/data/part_1.parquet:ro
+      - ./parts/part_node_2.parquet:/data/part_2.parquet:ro
+      - ./shared:/shared
+
+  # client container for running spark-submit commands
+  spark-client:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-custom
+    image: spark-custom:latest
+    container_name: spark-client
+    depends_on:
+      - spark-master
+    command: [ "sleep", "infinity" ]
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_CONF_DIR=/opt/spark/conf
+    volumes:
+      - ./app:/opt/app
+      - ./parts:/opt/parts:ro
+      - ./shared:/shared
+    networks:
+      - spark-net
+
+volumes:
+  spark-logs:
+
+networks:
+  spark-net:
+    driver: bridge
